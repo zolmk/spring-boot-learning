@@ -302,12 +302,14 @@ public class SpringApplication {
 	 * @return a running {@link ApplicationContext}
 	 */
 	public ConfigurableApplicationContext run(String... args) {
+		// 计时器
 		StopWatch stopWatch = new StopWatch();
 		stopWatch.start();
 		ConfigurableApplicationContext context = null;
 		// 异常报告器
 		Collection<SpringBootExceptionReporter> exceptionReporters = new ArrayList<>();
-		// awt headless配置，如果配置不存在，则设置为true
+		// 配置java.awt.headless = true，如果配置不存在，则设置为true。
+		// 作用是告诉程序自己模拟输入输出信号，避免因缺少外部设备导致的信号传输失败，进而引发错误（模拟显示器、键盘、鼠标等）
 		configureHeadlessProperty();
 		// 监听器 在初始化时通过spring.factories文件引入
 		SpringApplicationRunListeners listeners = getRunListeners(args);
@@ -317,14 +319,14 @@ public class SpringApplication {
 			ApplicationArguments applicationArguments = new DefaultApplicationArguments(args);
 			// 准备环境
 			ConfigurableEnvironment environment = prepareEnvironment(listeners, applicationArguments);
+			// 配置系统变量 spring.beaninfo.ignore
 			configureIgnoreBeanInfo(environment);
 			// 输出 banner
 			Banner printedBanner = printBanner(environment);
-			// 创建应用上下文
+			// 根据前面计算的程序类型创建容器上下文
 			context = createApplicationContext();
 			exceptionReporters = getSpringFactoriesInstances(SpringBootExceptionReporter.class,
 					new Class[] { ConfigurableApplicationContext.class }, context);
-
 			/*
 				前面做的事，主要是环境的准备，包括
 				0. 在SpringApplication的构造器中，设置了应用程序的类型、初始化器和监听器，并且缓存了所有
@@ -337,18 +339,22 @@ public class SpringApplication {
 				6. 准备异常报告器
 			 */
 
-			// 准备应用上下文，完成自动装配环境准备的过程
+			// 准备容器上下文，对容器进行设置，参数来源于前期的准备过程
 			prepareContext(context, environment, listeners, applicationArguments, printedBanner);
-			// 重点！完成自动装配
+
+			// 重点！刷新容器环境，完成自动装配
 			refreshContext(context);
 
-
 			afterRefresh(context, applicationArguments);
+
+			// 计时器停止，输出日志
 			stopWatch.stop();
 			if (this.logStartupInfo) {
 				new StartupInfoLogger(this.mainApplicationClass).logStarted(getApplicationLog(), stopWatch);
 			}
+			// 调用监听器
 			listeners.started(context);
+			// 执行ApplicationRunner 和 CommandLineRunner
 			callRunners(context, applicationArguments);
 		}
 		catch (Throwable ex) {
